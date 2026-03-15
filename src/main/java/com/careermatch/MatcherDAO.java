@@ -1,4 +1,3 @@
-
 import java.sql.*;
 import java.util.*;
 
@@ -24,8 +23,11 @@ public class MatcherDAO {
 
     public List<Student> getAllStudents() throws SQLException {
         List<Student> list = new ArrayList<>();
-        ResultSet rs = DBUtil.getConnection().createStatement().executeQuery("SELECT * FROM students");
-        while (rs.next()) list.add(new Student(rs.getInt(1), rs.getString(2)));
+        try (Connection c = DBUtil.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM students")) {
+            while (rs.next()) list.add(new Student(rs.getInt(1), rs.getString(2)));
+        }
         return list;
     }
 
@@ -39,8 +41,10 @@ public class MatcherDAO {
     }
 
     public void deleteStudent(int id) throws SQLException {
-        try (Connection c = DBUtil.getConnection()) {
-            c.createStatement().executeUpdate("DELETE FROM students WHERE student_id=" + id);
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement("DELETE FROM students WHERE student_id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
         }
     }
 
@@ -54,15 +58,21 @@ public class MatcherDAO {
     }
 
     public Skill getSkillById(int id) throws SQLException {
-        ResultSet rs = DBUtil.getConnection().createStatement()
-                .executeQuery("SELECT * FROM skills WHERE skill_id=" + id);
-        return rs.next() ? new Skill(rs.getInt(1), rs.getString(2)) : null;
+        String sql = "SELECT * FROM skills WHERE skill_id=?";
+        try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? new Skill(rs.getInt(1), rs.getString(2)) : null;
+        }
     }
 
     public List<Skill> getAllSkills() throws SQLException {
         List<Skill> list = new ArrayList<>();
-        ResultSet rs = DBUtil.getConnection().createStatement().executeQuery("SELECT * FROM skills");
-        while (rs.next()) list.add(new Skill(rs.getInt(1), rs.getString(2)));
+        try (Connection c = DBUtil.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM skills")) {
+            while (rs.next()) list.add(new Skill(rs.getInt(1), rs.getString(2)));
+        }
         return list;
     }
 
@@ -76,31 +86,19 @@ public class MatcherDAO {
     }
 
     public void deleteSkill(int skillId) throws SQLException {
-    String deleteRequirements =
-        "DELETE FROM career_requirements WHERE skill_id = ?";
-    String deleteSkill =
-        "DELETE FROM skills WHERE skill_id = ?";
-
-    try (Connection conn = DBUtil.getConnection()) {
-        conn.setAutoCommit(false);
-
-        try (PreparedStatement ps1 = conn.prepareStatement(deleteRequirements);
-             PreparedStatement ps2 = conn.prepareStatement(deleteSkill)) {
-
-            ps1.setInt(1, skillId);
-            ps1.executeUpdate();
-
-            ps2.setInt(1, skillId);
-            ps2.executeUpdate();
-
-            conn.commit();
-        } catch (SQLException e) {
-            conn.rollback();
-            throw e;
+        try (Connection c = DBUtil.getConnection()) {
+            try (PreparedStatement ps1 = c.prepareStatement(
+                    "DELETE FROM career_requirements WHERE skill_id = ?")) {
+                ps1.setInt(1, skillId);
+                ps1.executeUpdate();
+            }
+            try (PreparedStatement ps2 = c.prepareStatement(
+                    "DELETE FROM skills WHERE skill_id = ?")) {
+                ps2.setInt(1, skillId);
+                ps2.executeUpdate();
+            }
         }
     }
-}
-
 
     /* ===================== INTERESTS ===================== */
 
@@ -127,10 +125,9 @@ public class MatcherDAO {
 
     public List<Interest> getAllInterests() throws SQLException {
         List<Interest> list = new ArrayList<>();
-        String sql = "SELECT * FROM interests";
         try (Connection c = DBUtil.getConnection();
              Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             ResultSet rs = st.executeQuery("SELECT * FROM interests")) {
             while (rs.next()) {
                 list.add(new Interest(rs.getInt("interest_id"), rs.getString("interest_name")));
             }
@@ -149,32 +146,19 @@ public class MatcherDAO {
     }
 
     public void deleteInterest(int interestId) throws SQLException {
-
-    String deleteRequirements =
-        "DELETE FROM career_requirements WHERE interest_id = ?";
-    String deleteInterest =
-        "DELETE FROM interests WHERE interest_id = ?";
-
-    try (Connection conn = DBUtil.getConnection()) {
-        conn.setAutoCommit(false);
-
-        try (PreparedStatement ps1 = conn.prepareStatement(deleteRequirements);
-             PreparedStatement ps2 = conn.prepareStatement(deleteInterest)) {
-
-            ps1.setInt(1, interestId);
-            ps1.executeUpdate();
-
-            ps2.setInt(1, interestId);
-            ps2.executeUpdate();
-
-            conn.commit();
-
-        } catch (SQLException e) {
-            conn.rollback();
-            throw e;
+        try (Connection c = DBUtil.getConnection()) {
+            try (PreparedStatement ps1 = c.prepareStatement(
+                    "DELETE FROM career_requirements WHERE interest_id = ?")) {
+                ps1.setInt(1, interestId);
+                ps1.executeUpdate();
+            }
+            try (PreparedStatement ps2 = c.prepareStatement(
+                    "DELETE FROM interests WHERE interest_id = ?")) {
+                ps2.setInt(1, interestId);
+                ps2.executeUpdate();
+            }
         }
     }
-}
 
     /* ===================== CAREERS ===================== */
 
@@ -207,10 +191,9 @@ public class MatcherDAO {
 
     public List<Career> getAllCareers() throws SQLException {
         List<Career> list = new ArrayList<>();
-        String sql = "SELECT * FROM careers";
         try (Connection c = DBUtil.getConnection();
              Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             ResultSet rs = st.executeQuery("SELECT * FROM careers")) {
             while (rs.next()) {
                 list.add(new Career(
                         rs.getInt("career_id"),
@@ -235,9 +218,30 @@ public class MatcherDAO {
     }
 
     public void deleteCareer(int id) throws SQLException {
-        try (Connection c = DBUtil.getConnection()) {
-            c.createStatement().executeUpdate(
-                    "DELETE FROM careers WHERE career_id=" + id);
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "DELETE FROM careers WHERE career_id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Deletes career_requirements rows first, then the career itself.
+     * Uses two separate connections to avoid transaction lock issues.
+     */
+    public void deleteCareerCascade(int careerId) throws SQLException {
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps1 = c.prepareStatement(
+                     "DELETE FROM career_requirements WHERE career_id = ?")) {
+            ps1.setInt(1, careerId);
+            ps1.executeUpdate();
+        }
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps2 = c.prepareStatement(
+                     "DELETE FROM careers WHERE career_id = ?")) {
+            ps2.setInt(1, careerId);
+            ps2.executeUpdate();
         }
     }
 
@@ -245,10 +249,7 @@ public class MatcherDAO {
 
     public void createCareerRequirement(int careerId, int skillId, int interestId, int weight)
             throws SQLException {
-        String sql = """
-                INSERT INTO career_requirements (career_id, skill_id, interest_id, weight)
-                VALUES (?, ?, ?, ?)
-                """;
+        String sql = "INSERT INTO career_requirements (career_id, skill_id, interest_id, weight) VALUES (?, ?, ?, ?)";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, careerId);
@@ -277,11 +278,7 @@ public class MatcherDAO {
 
     public void updateCareerRequirement(int careerId, int skillId, int interestId, int weight)
             throws SQLException {
-        String sql = """
-                UPDATE career_requirements
-                SET weight=?
-                WHERE career_id=? AND skill_id=? AND interest_id=?
-                """;
+        String sql = "UPDATE career_requirements SET weight=? WHERE career_id=? AND skill_id=? AND interest_id=?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, weight);
@@ -294,10 +291,7 @@ public class MatcherDAO {
 
     public void deleteCareerRequirement(int careerId, int skillId, int interestId)
             throws SQLException {
-        String sql = """
-                DELETE FROM career_requirements
-                WHERE career_id=? AND skill_id=? AND interest_id=?
-                """;
+        String sql = "DELETE FROM career_requirements WHERE career_id=? AND skill_id=? AND interest_id=?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, careerId);

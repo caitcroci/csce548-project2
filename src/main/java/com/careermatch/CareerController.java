@@ -8,10 +8,12 @@ import static spark.Spark.*;
  * CareerController
  *
  * Routes:
- *   GET    /api/careers          → getAllCareers
- *   GET    /api/careers/:id      → getCareerById
- *   POST   /api/careers          → save (insert)
- *   PUT    /api/careers/:id      → save (update)
+ *   GET    /api/careers                      → getAllCareers
+ *   GET    /api/careers/:id                  → getCareerById
+ *   GET    /api/careers/:id/requirements     → getCareerRequirements
+ *   POST   /api/careers                      → save (insert)
+ *   PUT    /api/careers/:id                  → save (update)
+ *   DELETE /api/careers/:id                  → deleteCareer (cascades requirements)
  */
 public class CareerController {
 
@@ -36,6 +38,23 @@ public class CareerController {
                 Career c = bm.getCareerById(id);
                 if (c == null) { res.status(404); return error("Career not found"); }
                 return gson.toJson(c);
+            } catch (NumberFormatException e) {
+                res.status(400);
+                return error("Invalid career ID");
+            } catch (Exception e) {
+                res.status(500);
+                return error(e.getMessage());
+            }
+        });
+
+        get("/api/careers/:id/requirements", (req, res) -> {
+            try {
+                int id = Integer.parseInt(req.params(":id"));
+                List<String> reqs = bm.getCareerRequirementsByCareerId(id);
+                return gson.toJson(reqs);
+            } catch (NumberFormatException e) {
+                res.status(400);
+                return error("Invalid career ID");
             } catch (Exception e) {
                 res.status(500);
                 return error(e.getMessage());
@@ -66,6 +85,25 @@ public class CareerController {
                 Career toUpdate = new Career(id, parsed.getTitle(), parsed.getCategory(), parsed.getDescription());
                 bm.saveCareer(toUpdate);
                 return gson.toJson(bm.getCareerById(id));
+            } catch (NumberFormatException e) {
+                res.status(400);
+                return error("Invalid career ID");
+            } catch (Exception e) {
+                res.status(500);
+                return error(e.getMessage());
+            }
+        });
+
+        delete("/api/careers/:id", (req, res) -> {
+            try {
+                int id = Integer.parseInt(req.params(":id"));
+                bm.deleteCareerCascade(id);
+                res.status(200);
+                res.type("application/json");
+                return "{\"deleted\":true}";
+            } catch (NumberFormatException e) {
+                res.status(400);
+                return error("Invalid career ID");
             } catch (Exception e) {
                 res.status(500);
                 return error(e.getMessage());

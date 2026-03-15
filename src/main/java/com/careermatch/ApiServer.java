@@ -1,33 +1,37 @@
 import static spark.Spark.*;
 
-/**
- * ApiServer – Spark Java REST API entry point
- *
- * Starts the server and registers all controllers.
- * Default port: 4567
- *
- * Run:  java -cp ".:lib/*" ApiServer
- */
 public class ApiServer {
 
     public static void main(String[] args) {
 
-        // ── Server config ────────────────────────────────────────────
         port(4567);
 
-        // Allow JSON responses from all endpoints
-        before((req, res) -> res.type("application/json"));
-
-        // ── CORS headers (handy if you test from a browser / Postman) ─
+        // Handle CORS preflight (OPTIONS) — must be registered before all other routes
         options("/*", (req, res) -> {
+            String accessControlRequestHeaders = req.headers("Access-Control-Request-Headers");
+            if (accessControlRequestHeaders != null) {
+                res.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
+            }
+            String accessControlRequestMethod = req.headers("Access-Control-Request-Method");
+            if (accessControlRequestMethod != null) {
+                res.header("Access-Control-Allow-Methods", accessControlRequestMethod);
+            }
             res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Methods", "GET,POST,PUT");
-            res.header("Access-Control-Allow-Headers", "Content-Type");
+            res.status(200);
             return "OK";
         });
-        before((req, res) -> res.header("Access-Control-Allow-Origin", "*"));
 
-        // ── Register controllers ──────────────────────────────────────
+        // Apply CORS headers to every response AFTER route handler completes
+        afterAfter((req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+            res.header("Access-Control-Max-Age", "86400");
+            if (!req.requestMethod().equalsIgnoreCase("OPTIONS")) {
+                res.type("application/json");
+            }
+        });
+
         new StudentController();
         new SkillController();
         new InterestController();

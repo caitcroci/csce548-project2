@@ -111,17 +111,21 @@ public class BusinessManager {
         dao.deleteCareer(id);
     }
 
+    /**
+     * Deletes a career and its associated career_requirements rows in one
+     * transaction so foreign-key constraints are not violated.
+     */
+    public void deleteCareerCascade(int id) throws SQLException {
+        dao.deleteCareerCascade(id);
+    }
+
     /* ================================================================
        CAREER REQUIREMENTS  (composite key – no plain int ID)
     ================================================================ */
 
     public void saveCareerRequirement(int careerId, int skillId, int interestId, int weight)
             throws SQLException {
-        // career_requirements has no surrogate PK; always upsert via update,
-        // fall back to insert if zero rows were affected.
         dao.updateCareerRequirement(careerId, skillId, interestId, weight);
-        // Note: for a true upsert you would check rows-affected; for simplicity
-        // call createCareerRequirement when you know the row is new.
     }
 
     public void createCareerRequirement(int careerId, int skillId, int interestId, int weight)
